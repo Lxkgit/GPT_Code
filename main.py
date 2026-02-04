@@ -1,4 +1,3 @@
-import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -50,18 +49,23 @@ class SmbBrowserCard(QtWidgets.QFrame):
         self.conf_path_edit = QtWidgets.QLineEdit("/etc/samba/smb.conf")
         self.conf_browse_button = QtWidgets.QPushButton("选择配置文件")
         self.refresh_button = QtWidgets.QPushButton("刷新共享")
+        self.up_button = QtWidgets.QPushButton("上级目录")
+        self.up_button.setEnabled(False)
 
         self.share_list = QtWidgets.QListWidget()
         self.file_list = QtWidgets.QListWidget()
 
         self.status_label = QtWidgets.QLabel("请选择共享目录")
         self.status_label.setStyleSheet("color: #555;")
+        self.path_label = QtWidgets.QLabel("当前路径: -")
+        self.path_label.setStyleSheet("color: #333;")
 
         header_layout = QtWidgets.QHBoxLayout()
         header_layout.addWidget(QtWidgets.QLabel("SMB 配置文件:"))
         header_layout.addWidget(self.conf_path_edit, stretch=1)
         header_layout.addWidget(self.conf_browse_button)
         header_layout.addWidget(self.refresh_button)
+        header_layout.addWidget(self.up_button)
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
         splitter.addWidget(self.share_list)
@@ -72,12 +76,17 @@ class SmbBrowserCard(QtWidgets.QFrame):
         layout = QtWidgets.QVBoxLayout(self)
         layout.addLayout(header_layout)
         layout.addWidget(splitter, stretch=1)
+        layout.addWidget(self.path_label)
         layout.addWidget(self.status_label)
 
         self.conf_browse_button.clicked.connect(self.choose_conf)
         self.refresh_button.clicked.connect(self.load_shares)
+        self.up_button.clicked.connect(self.go_up)
         self.share_list.itemSelectionChanged.connect(self.load_files)
         self.file_list.itemDoubleClicked.connect(self.open_selected_file)
+
+        self.current_root: Path | None = None
+        self.current_path: Path | None = None
 
         self.load_shares()
 
@@ -92,6 +101,10 @@ class SmbBrowserCard(QtWidgets.QFrame):
     def load_shares(self) -> None:
         self.share_list.clear()
         self.file_list.clear()
+        self.current_root = None
+        self.current_path = None
+        self.up_button.setEnabled(False)
+        self.path_label.setText("当前路径: -")
 
         conf_path = Path(self.conf_path_edit.text()).expanduser()
         shares = parse_smb_conf(conf_path)
@@ -107,7 +120,6 @@ class SmbBrowserCard(QtWidgets.QFrame):
         self.status_label.setText("请选择共享目录")
 
     def load_files(self) -> None:
-        self.file_list.clear()
         selected_items = self.share_list.selectedItems()
         if not selected_items:
             return
@@ -117,26 +129,41 @@ class SmbBrowserCard(QtWidgets.QFrame):
             self.status_label.setText(f"目录不存在: {share.path}")
             return
 
-        entries = sorted(share.path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
+        self.current_root = share.path
+        self.set_current_path(share.path, f"{share.name} 下共有")
+
+    def set_current_path(self, path: Path, status_prefix: str | None = None) -> None:
+        self.file_list.clear()
+        self.current_path = path
+        self.up_button.setEnabled(self.current_root is not None and path != self.current_root)
+        self.path_label.setText(f"当前路径: {path}")
+
+        entries = sorted(path.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
         for entry in entries:
             label = entry.name + ("/" if entry.is_dir() else "")
             item = QtWidgets.QListWidgetItem(label)
             item.setData(QtCore.Qt.ItemDataRole.UserRole, entry)
             self.file_list.addItem(item)
 
-        self.status_label.setText(f"{share.name} 下共有 {len(entries)} 个项目")
+        if status_prefix:
+            self.status_label.setText(f"{status_prefix} {len(entries)} 个项目")
+        else:
+            self.status_label.setText(f"{path} 下共有 {len(entries)} 个项目")
+
+    def go_up(self) -> None:
+        if not self.current_root or not self.current_path:
+            return
+        if self.current_path == self.current_root:
+            return
+        parent = self.current_path.parent
+        if not parent.exists():
+            return
+        self.set_current_path(parent)
 
     def open_selected_file(self, item: QtWidgets.QListWidgetItem) -> None:
         entry: Path = item.data(QtCore.Qt.ItemDataRole.UserRole)
         if entry.is_dir():
-            self.file_list.clear()
-            entries = sorted(entry.iterdir(), key=lambda p: (p.is_file(), p.name.lower()))
-            for child in entries:
-                label = child.name + ("/" if child.is_dir() else "")
-                child_item = QtWidgets.QListWidgetItem(label)
-                child_item.setData(QtCore.Qt.ItemDataRole.UserRole, child)
-                self.file_list.addItem(child_item)
-            self.status_label.setText(f"进入目录: {entry}")
+            self.set_current_path(entry, status_prefix=f"进入目录: {entry}，共有")
             return
 
         url = QtCore.QUrl.fromLocalFile(str(entry))
