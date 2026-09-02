@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1020" />
+    <title>表格探查器 · Excel 文件夹解析 Demo</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div class="brand-row">
+          <div class="logo" aria-hidden="true">⌁</div>
+          <span>Data Desk</span>
+          <span class="demo-badge">DEMO</span>
+        </div>
+        <div class="hero-copy">
+          <p class="eyebrow">LOCAL EXCEL EXPLORER</p>
+          <h1>把文件夹里的表格，<br /><em>变成清晰的数据视图。</em></h1>
+          <p class="hero-description">选择一个本地文件夹，我们会在浏览器中读取其中的 Excel 文件、工作表和全部单元格数据。文件不会上传到服务器。</p>
+        </div>
+        <div class="hero-orbit orbit-one"></div>
+        <div class="hero-orbit orbit-two"></div>
+      </section>
+
+      <section class="workspace" aria-label="Excel 文件夹解析工具">
+        <header class="workspace-header">
+          <div>
+            <p class="eyebrow">WORKSPACE</p>
+            <h2>文件夹解析</h2>
+          </div>
+          <div class="privacy-note"><span class="privacy-dot"></span>仅在本地浏览器中处理</div>
+        </header>
+
+        <div class="folder-picker" id="dropZone">
+          <div class="picker-icon" aria-hidden="true">↥</div>
+          <div class="picker-copy">
+            <strong id="folderLabel">选择一个包含 Excel 文件的文件夹</strong>
+            <span>支持 .xlsx、.xls、.csv 文件，可直接拖入文件</span>
+          </div>
+          <label class="primary-button" for="folderInput">选择文件夹</label>
+          <input id="folderInput" type="file" webkitdirectory directory multiple hidden />
+          <input id="fileInput" type="file" accept=".xlsx,.xls,.csv" multiple hidden />
+        </div>
+
+        <div class="summary-grid" id="summaryGrid" aria-live="polite">
+          <article><span>Excel 文件</span><strong id="fileCount">0</strong></article>
+          <article><span>工作表</span><strong id="sheetCount">0</strong></article>
+          <article><span>数据行</span><strong id="rowCount">0</strong></article>
+          <article><span>已读取单元格</span><strong id="cellCount">0</strong></article>
+        </div>
+
+        <div class="content-grid">
+          <section class="file-panel panel">
+            <div class="panel-heading"><div><p class="eyebrow">01 / FILES</p><h3>已发现的表格</h3></div><span id="scanStatus">等待选择</span></div>
+            <div id="fileList" class="file-list empty-state"><span class="empty-mark">⌁</span><p>从文件夹开始，查看其中的 Excel 数据。</p></div>
+          </section>
+
+          <section class="preview-panel panel">
+            <div class="panel-heading"><div><p class="eyebrow">02 / PREVIEW</p><h3 id="previewTitle">数据预览</h3></div><button id="exportButton" class="text-button" disabled>导出 CSV</button></div>
+            <div id="sheetTabs" class="sheet-tabs" aria-label="工作表"></div>
+            <div id="previewMeta" class="preview-meta">选择一个 Excel 文件以查看完整表格内容</div>
+            <div id="tableWrap" class="table-wrap empty-table"><div><span class="empty-mark">▦</span><p>解析完成后，第一张工作表会显示在这里。</p></div></div>
+          </section>
+        </div>
+      </section>
+    </main>
+    <div id="toast" class="toast" role="status"></div>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
